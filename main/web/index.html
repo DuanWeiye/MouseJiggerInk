@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MouseJigger</title>
+<style>
+*{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#f3f4f6;color:#1f2937}
+.wrap{max-width:760px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:8px 0}h2{font-size:15px;margin:0 0 10px;color:#374151}
+.card{background:#fff;border-radius:12px;padding:16px;margin:12px 0;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+label{font-size:13px;color:#4b5563;min-width:96px}
+input[type=text],input[type=number]{padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;flex:1;min-width:120px}
+input[type=number]{flex:none;width:96px}
+button{padding:8px 14px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-size:14px;cursor:pointer}
+button.sec{background:#6b7280}button.warn{background:#dc2626}button.mini{padding:4px 8px;font-size:12px;background:#9ca3af}
+.status .grp{padding:7px 0;border-top:1px solid #eef0f2;font-size:13px;line-height:1.6}
+.status .grp:first-child{border-top:0;padding-top:0}.status b{color:#111827}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;color:#fff}
+.on{background:#16a34a}.off{background:#9ca3af}.pause{background:#d97706}
+.grid{display:grid;grid-template-columns:repeat(24,1fr);gap:2px;margin:4px 0}
+.cell{height:26px;border:1px solid #d1d5db;border-radius:3px;cursor:pointer;background:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:10px;color:#9ca3af;user-select:none}
+.cell.on{background:#2563eb;border-color:#2563eb;color:#fff}
+.muted{color:#9ca3af;font-size:12px}.ok{color:#16a34a}.err{color:#dc2626}
+a{color:#2563eb}
+</style></head><body><div class="wrap">
+<h1>🖱️ MouseJigger 配置</h1>
+
+<div class="card"><h2>状态</h2><div class="status" id="status">加载中…</div>
+<div class="row" style="margin-top:12px"><button id="simbtn" onclick="toggleSim()">…</button>
+<button class="sec" onclick="wifiOff()">完成，关闭 WiFi</button><span id="actmsg" class="muted"></span></div>
+</div>
+
+<div class="card"><h2>设置</h2>
+<div class="row"><label>蓝牙设备名</label><input type="text" id="btName"><span class="muted">最多 31 字节（中文约 10 字）</span></div>
+<div class="row"><label>移动间隔(秒)</label>最短<input type="number" id="moveMin" min="5">最长<input type="number" id="moveMax" min="5"></div>
+<div class="row"><label>移动幅度(像素)</label>最小<input type="number" id="ampMin" min="1" max="100">最大<input type="number" id="ampMax" min="1" max="100"></div>
+
+<h2 style="margin-top:14px">周计划（勾选=该小时允许移动）</h2>
+<p class="muted">每格 1 小时，按设备时间。打开本页时会自动用手机的时间和时区校准设备时钟；时钟无效时始终允许移动。</p>
+<div class="row" style="margin:2px 0"><label>工作日(一~五)</label>
+  <button class="mini" onclick="fill('wd',1)">全天</button>
+  <button class="mini" onclick="fill('wd',0)">清空</button>
+  <button class="mini" onclick="inv('wd')">反选</button></div>
+<div class="grid" id="wd"></div>
+<div class="row" style="margin:8px 0 2px"><label>周末(六/日)</label>
+  <button class="mini" onclick="fill('we',1)">全天</button>
+  <button class="mini" onclick="fill('we',0)">清空</button>
+  <button class="mini" onclick="inv('we')">反选</button></div>
+<div class="grid" id="we"></div>
+
+<div class="row" style="margin-top:14px"><button onclick="saveSettings()">保存设置</button>
+<button class="sec" onclick="restoreDefaults()">恢复默认</button><span id="setmsg" class="muted"></span></div>
+</div>
+
+<p class="muted" style="text-align:center">MouseJiggerInk · <a href="https://github.com/DuanWeiye/MouseJiggerInk" target="_blank" rel="noopener">github.com/DuanWeiye/MouseJiggerInk</a></p>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+const post=(u,o)=>fetch(u,{method:'POST',body:new URLSearchParams(o||{})});
+let SIM=false;
+
+function buildGrid(id){let g=$(id);g.innerHTML='';
+  for(let h=0;h<24;h++){let c=document.createElement('div');c.className='cell';c.dataset.i=h;
+    c.textContent=h;c.title=h+':00 - '+(h+1)+':00';
+    c.onclick=()=>c.classList.toggle('on');g.appendChild(c);}}
+function setGrid(id,hex){let v=parseInt(hex||'0',16)||0;
+  $(id).querySelectorAll('.cell').forEach(c=>c.classList.toggle('on',((v>>(+c.dataset.i))&1)===1));}
+function getGrid(id){let v=0;$(id).querySelectorAll('.cell').forEach(c=>{
+  if(c.classList.contains('on'))v|=(1<<(+c.dataset.i));});return (v>>>0).toString(16).padStart(6,'0');}
+function fill(id,on){$(id).querySelectorAll('.cell').forEach(c=>c.classList.toggle('on',!!on));}
+function inv(id){$(id).querySelectorAll('.cell').forEach(c=>c.classList.toggle('on'));}
+function upt(m){let d=Math.floor(m/1440),h=Math.floor(m/60)%24,mm=m%60;
+  return (d?d+'天 ':'')+(d||h?h+'小时 ':'')+mm+'分';}
+
+async function loadStatus(){let s=await(await fetch('/api/status')).json();
+  SIM=s.sim;
+  let st=!s.sim?'<span class="badge off">模拟关闭</span>'
+    :!s.schedAllow?'<span class="badge pause">计划暂停时段（蓝牙已关闭省电）</span>'
+    :!s.ble?'<span class="badge off">等待电脑连接</span>':'<span class="badge on">工作中</span>';
+  $('status').innerHTML=
+    `<div class="grp">🖱️ ${st}　<span class="muted">蓝牙${!s.sim||!s.schedAllow?'已关闭':s.ble?'已连接':'未连接'} · 已配对主机 ${s.bond<0?'未知':s.bond}</span></div>`+
+    `<div class="grp">🔋 <b>${(s.battMv/1000).toFixed(2)} V</b>（约 ${s.battPct}%）　⏱️ 已运行 <b>${upt(s.uptimeMin)}</b></div>`+
+    `<div class="grp">🕒 设备时间 <b>${esc(s.time)}</b> <span class="muted">(UTC${s.tzMin>=0?'+':'-'}${Math.floor(Math.abs(s.tzMin)/60)}${Math.abs(s.tzMin)%60?':'+String(Math.abs(s.tzMin)%60).padStart(2,'0'):''})</span> ${s.timeValid?'':'<span class="err">（未校准）</span>'}</div>`;
+  $('simbtn').textContent=s.sim?'关闭模拟':'开启模拟';
+  $('simbtn').className=s.sim?'warn':'';}
+
+async function loadSettings(){let s=await(await fetch('/api/settings')).json();
+  $('btName').value=s.btName;$('moveMin').value=s.moveMin;$('moveMax').value=s.moveMax;
+  $('ampMin').value=s.ampMin;$('ampMax').value=s.ampMax;setGrid('wd',s.wd);setGrid('we',s.we);}
+// 手机当前时间 + 时区（相对 UTC 的分钟，东为正），设备据此校准 RTC 并跟随手机时区
+async function syncTime(){await post('/api/time',{t:Math.floor(Date.now()/1000),tz:-new Date().getTimezoneOffset()});}
+async function saveSettings(){
+  let name=$('btName').value;
+  if(new TextEncoder().encode(name).length>31){$('setmsg').innerHTML='<span class="err">设备名太长（最多 31 字节）</span>';return;}
+  let r=await post('/api/settings',{name,
+    moveMin:$('moveMin').value,moveMax:$('moveMax').value,ampMin:$('ampMin').value,ampMax:$('ampMax').value,
+    wd:getGrid('wd'),we:getGrid('we')});
+  if(!r.ok){$('setmsg').innerHTML='<span class="err">保存失败：'+esc(await r.text())+'</span>';return;}
+  let j=await r.json();
+  $('setmsg').innerHTML=j.renamed?'<span class="ok">已保存。新名字在蓝牙运行时立即生效，否则下次开蓝牙时生效（电脑上显示的旧名字要删除配对重配才会更新）</span>':'<span class="ok">已保存 ✓</span>';
+  loadSettings();}
+async function restoreDefaults(){if(!confirm('恢复默认设置？'))return;
+  await post('/api/defaults');await loadSettings();$('setmsg').innerHTML='<span class="ok">已恢复默认 ✓</span>';}
+async function toggleSim(){await post('/api/sim',{on:SIM?0:1});setTimeout(loadStatus,600);}
+async function wifiOff(){await post('/api/wifioff');
+  document.body.innerHTML='<div class="wrap"><div class="card"><h2>WiFi 已关闭</h2><p class="muted">设备正在重启回到正常界面（几秒钟），热点会自动消失。</p></div></div>';}
+
+buildGrid('wd');buildGrid('we');
+// 每步单独兜底：某一步失败（如手机切网络）不影响其它部分加载
+(async()=>{for(const f of [syncTime,loadStatus,loadSettings]){try{await f();}catch(e){console.log(e);}}
+  setInterval(()=>loadStatus().catch(()=>{}),5000);})();
+</script></body></html>

@@ -1,0 +1,11 @@
+# MouseJigger CoreInk —— 单分区表（无 OTA）
+#
+# 4MB flash 布局：
+#   0x09000 ~ 0x0F000  nvs      24KB   设置 + 蓝牙配对(NimBLE NVS persist) + PHY 校准
+#   0x0F000 ~ 0x10000  phy_init  4KB
+#   0x10000 ~ 0x400000 factory  3.94MB 应用程序
+#
+# Name,     Type, SubType, Offset,   Size
+nvs,        data, nvs,     0x9000,   0x6000
+phy_init,   data, phy,     0xF000,   0x1000
+factory,    app,  factory, 0x10000,  0x3F0000

@@ -1,0 +1,31 @@
+idf_component_register(
+    SRCS
+        "app_main.cpp"
+        "board.cpp"
+        "epd.cpp"
+        "ui.cpp"
+        "ble_hid.c"
+        "rtc.cpp"
+        "settings.cpp"
+        "portal.cpp"
+    INCLUDE_DIRS
+        "."
+    EMBED_TXTFILES
+        "web/index.html"
+    REQUIRES
+        bt
+        nvs_flash
+        esp_driver_gpio
+        esp_driver_spi
+        esp_driver_i2c
+        esp_driver_uart
+        esp_adc
+        esp_pm
+        esp_timer
+        esp_wifi
+        esp_coex
+        esp_netif
+        esp_event
+        esp_http_server
+        lwip
+)

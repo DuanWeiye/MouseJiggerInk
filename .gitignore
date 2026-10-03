@@ -1,0 +1,5 @@
+# ESP-IDF 生成物（sdkconfig 由 sdkconfig.defaults 生成；managed_components 由 dependencies.lock 还原）
+build/
+sdkconfig
+sdkconfig.old
+managed_components/

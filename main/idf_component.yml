@@ -1,0 +1,5 @@
+dependencies:
+  idf: ">=5.4"
+  # 只用 M5GFX 的离屏画布（M5Canvas/LGFX_Sprite）画图、字体与二维码；
+  # 墨水屏驱动是自己写的 epd.cpp（要掌控差分刷新的"旧画面"与面板断电），不用它的面板。
+  m5stack/m5gfx: "^0.2.0"
